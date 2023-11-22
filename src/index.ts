@@ -110,3 +110,4 @@ schedule.scheduleJob(rule, function () {
   getWeatherData();
   console.log('send mail successfully');
 });
+console.log('server started');
