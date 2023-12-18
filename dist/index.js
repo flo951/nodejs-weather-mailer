@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import nodemailer from 'nodemailer';
-import google from 'googleapis';
 import axios from 'axios';
 import express from 'express';
 import schedule from 'node-schedule';
@@ -26,25 +25,35 @@ const getWeatherData = async () => {
     };
     try {
         const response = await axios.request(options);
-        console.log({ response: response.data.forecast.forecastday[1] });
+        console.log({
+            response: response.data.forecast.forecastday[1],
+        });
         day = response.data.forecast.forecastday[1].date;
         forecast = response.data.forecast.forecastday[1];
         const minTemp = forecast.day.mintemp_c;
         const maxTemp = forecast.day.maxtemp_c;
         const uvIndex = forecast.day.uv;
         const windSpeed = forecast.day.maxwind_kph;
+        const condition = forecast.day.condition.text;
+        const chanceOfRain = forecast.day.daily_chance_of_rain;
+        const sunrise = forecast.astro.sunrise;
+        const sunset = forecast.astro.sunset;
+        const willItSnow = forecast.day.daily_will_it_snow === 1 ? 'Ja' : 'Nein';
         const createTransporter = async () => {
             try {
-                const oauth2Client = new google.Auth.OAuth2Client(process.env.CLIENT_ID, process.env.CLIENT_SECRET, 'https://developers.google.com/oauthplayground');
-                oauth2Client.setCredentials({
-                    refresh_token: process.env.REFRESH_TOKEN,
-                });
+                // const oauth2Client = new google.Auth.OAuth2Client(
+                //   process.env.CLIENT_ID,
+                //   process.env.CLIENT_SECRET,
+                //   'https://developers.google.com/oauthplayground',
+                // );
+                // oauth2Client.setCredentials({
+                //   refresh_token: process.env.REFRESH_TOKEN,
+                // });
                 const transporter = nodemailer.createTransport({
                     service: 'gmail',
                     auth: {
-                        type: 'OAuth2',
-                        clientId: process.env.CLIENT_ID,
-                        clientSecret: process.env.CLIENT_SECRET,
+                        user: process.env.USER_EMAIL,
+                        pass: process.env.USER_PASSWORD,
                     },
                 });
                 return transporter;
@@ -59,20 +68,18 @@ const getWeatherData = async () => {
                 const mailOptions = {
                     from: process.env.USER_EMAIL,
                     to: recipient,
-                    subject: `Weather for Tomorrow ${day}`,
+                    subject: `Wetter für morgen ${day}`,
                     html: `
-          <h3>Weather for Tomorrow ${day}</h3>
-          <p>Min Temp: ${minTemp}°C</p>
-          <p>Max Temp: ${maxTemp}°C</p>
+          <h3>Wetter für morgen den ${day}</h3>
+          <p>Temperatur zwischen ${minTemp}°C - ${maxTemp}°C</p>
           <p>UV Index: ${uvIndex}</p>
-          <p>Wind Speed: ${windSpeed} kmh</p>
-          <p>Have a nice day!</p>
+          <p>Wind: ${windSpeed} kmh</p>
+          <p>Regenwahrscheinlichkeit: ${chanceOfRain}%</p>
+          <p>Wird es schneien?: ${willItSnow}</p>
+          <p>Vorhersage: ${condition}</p>
+          <p>Sonnenaufgang: ${sunrise}</p>
+          <p>Sonnenuntergang: ${sunset}</p>
           `,
-                    auth: {
-                        user: 'expensesplitterbot@gmail.com',
-                        refreshToken: process.env.REFRESH_TOKEN,
-                        accessToken: process.env.ACCESS_TOKEN,
-                    },
                 };
                 let emailTransporter = await createTransporter();
                 await emailTransporter.sendMail(mailOptions);
